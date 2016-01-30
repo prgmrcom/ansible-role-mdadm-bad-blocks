@@ -1,0 +1,4 @@
+---
+# defaults file for mdadm-bad-blocks
+
+mdadm_bad_blocks_use: "no"

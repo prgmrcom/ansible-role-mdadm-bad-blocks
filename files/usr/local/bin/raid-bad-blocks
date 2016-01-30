@@ -1,0 +1,25 @@
+#!/bin/bash
+#
+
+# We might be on a kernel with no raid support at all, exit if so
+[ -f /proc/mdstat ] || exit 0
+
+mailaddr=`grep "^MAILADDR" /etc/mdadm.conf | grep -Po '[^\s]+$'`
+[ -z "$mailaddr" ] && mailaddr=root
+
+active_list=`grep "^md.*: active" /proc/mdstat | cut -f 1 -d ' '`
+[ -z "$active_list" ] && exit 0
+
+output=""
+for dev in $active_list; do
+		for member in `ls -d /sys/block/$dev/md/dev-*/ | cut -f6 -d/`; do
+			bb=`cat /sys/block/$dev/md/$member/bad_blocks`
+			if [ ! -z "$bb" ] ; then
+					output="$output\n $dev $member:\n$bb"
+			fi
+		done
+done
+
+[ -z "$output" ] && exit 0
+
+echo -e "$output" | mail -s "mdadm bad blocks" "$mailaddr"

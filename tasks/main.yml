@@ -1,0 +1,33 @@
+---
+# tasks file for mdadm-bad-blocks
+
+- name: "[mdadm-bad-blocks] Add the OS specific varibles"
+  include_vars: "{{ ansible_os_family }}.yml"
+
+- name: "[mdadm-bad-blocks] Check if mdadm supports bbl="
+  command: grep bbl=no /sbin/mdadm
+  register: has_bbl
+  always_run: true
+  failed_when: false
+  changed_when: false
+
+- name: "[mdadm-bad-blocks] Replace existing bad block definition"
+  replace: 'backup=yes dest={{ mdadm_bad_blocks_conf_path }} regexp="[ 	]bbl=yes" replace=" bbl=no"'
+  when: has_bbl.rc == 0 and mdadm_bad_blocks_use == "no"
+
+- name: "[mdadm-bad-blocks] Replace existing bad block definition"
+  replace: 'backup=yes dest={{ mdadm_bad_blocks_conf_path }} regexp="[ 	]bbl=no" replace=" bbl=yes"'
+  when: has_bbl.rc == 0 and mdadm_bad_blocks_use == "yes"
+
+- name: "[mdadm-bad-blocks] Ensure bad block definition"
+  lineinfile: dest={{ mdadm_bad_blocks_conf_path }} line="CREATE bbl={{ mdadm_bad_blocks_use }}"
+  when: has_bbl.rc == 0
+
+- name: "[mdadm-bad-blocks] Copy files"
+  copy: src={{item}} dest=/{{item}} owner=root group=root mode=755
+  with_items:
+    - usr/local/bin/raid-bad-blocks
+
+- name: "[mdadm-bad-blocks] Enable daily bad blocks check"
+  cron: name="mdadm-bad-blocks" user="nobody" minute="0" hour="0" job="/usr/local/bin/raid-bad-blocks"
+

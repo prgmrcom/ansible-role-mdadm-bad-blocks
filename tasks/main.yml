@@ -7,7 +7,7 @@
 - name: "[mdadm-bad-blocks] Check if mdadm supports bbl="
   command: grep bbl=no /sbin/mdadm
   register: has_bbl
-  always_run: true
+  check_mode: true
   failed_when: false
   changed_when: false
 

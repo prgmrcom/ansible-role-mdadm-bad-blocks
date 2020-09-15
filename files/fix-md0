@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# This script removes partitions from md0, repartitions it, and re-adds
+# it to md0 without a bad block list. It is assumed that each member of
+# md0 is an sd device and that it's the first partition in md0.
+
+# The context is that when installing from a kickstart file, the raid
+# device created has a badblocks list by
+# default. We wish to remove this list and also repartition the drive
+# at the same time as we want more software control over the partitioning
+# than is convenient to do from kickstart.
+
+set -e
+set -u
+
+if (( $# < 1 )); then
+   echo "First argument must be sfdisk partition definition." >&2
+   exit 1
+fi
+SFDISK="$1"
+
+if [[ ! -f "$SFDISK" ]]; then
+  echo "$SFDISK is not valid." >&2
+  exit 1
+fi
+for i in /dev/sd?; do
+  /sbin/mdadm --fail /dev/md0 "${i}1"
+  /sbin/mdadm --remove /dev/md0 "${i}1"
+  sleep 5
+  cat "$SFDISK" | /sbin/sfdisk --force "$i" #may want to check manually the first time
+  sleep 5
+  /sbin/mdadm --re-add --update=no-bbl /dev/md0 "${i}1"
+  while grep -q '_' /proc/mdstat; do
+    sleep 1
+  done
+done
+
+#verify these are all No bad-blocks list configured on ....
+for i in /dev/sd?; do
+  /sbin/mdadm --examine-badblocks "${i}1"
+done
+

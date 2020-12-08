@@ -4,7 +4,16 @@
 # We might be on a kernel with no raid support at all, exit if so
 [ -f /proc/mdstat ] || exit 0
 
-mailaddr=`grep "^MAILADDR" /etc/mdadm.conf | grep -Po '[^\s]+$'`
+if [ -f /etc/mdadm.conf ]; then
+    mdadm_conf="/etc/mdadm.conf"
+elif [ -f /etc/mdadm/mdadm.conf ]; then
+    mdadm_conf="/etc/mdadm/mdadm.conf"
+else
+    echo "mdadm.conf not found in /etc/ or /etc/mdadm/"
+    exit 1
+fi
+
+mailaddr=`grep "^MAILADDR" "$mdadm_conf" | grep -Po '[^\s]+$'`
 [ -z "$mailaddr" ] && mailaddr=root
 
 active_list=`grep "^md.*: active" /proc/mdstat | cut -f 1 -d ' '`
